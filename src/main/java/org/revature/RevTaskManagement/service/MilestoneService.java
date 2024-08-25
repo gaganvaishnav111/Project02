@@ -25,6 +25,4 @@ public class MilestoneService {
     public Milestone getMilestoneById(int milestoneId) {
         return milestoneRepository.findByMilestoneId(milestoneId);
     }
-    // Add a method to find a milestone by its ID
-
 }

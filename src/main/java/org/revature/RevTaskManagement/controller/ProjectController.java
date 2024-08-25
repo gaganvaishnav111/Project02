@@ -1,5 +1,6 @@
 package org.revature.RevTaskManagement.controller;
 
+import jakarta.servlet.http.HttpSession;
 import org.revature.RevTaskManagement.models.Project;
 import org.revature.RevTaskManagement.models.User;
 import org.revature.RevTaskManagement.service.ProjectService;
@@ -23,14 +24,8 @@ public class ProjectController {
     private UserService userService;
 
     @PostMapping("/create")
-    public ResponseEntity<Project> createProject(@RequestBody Project newProject) {
-        try {
-            Project savedProject = projectService.createProject(newProject);
-            return new ResponseEntity<>(savedProject, HttpStatus.CREATED);
-        } catch (Exception e) {
-            // Handle exceptions appropriately
-            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+    public Project createProject(@RequestBody Project project) {
+        return projectService.createProject(project);
     }
 
     @GetMapping
@@ -65,17 +60,25 @@ public class ProjectController {
     public Set<User> getTeamMembersByProjectId(@RequestParam int projectId) {
         return projectService.getTeamMembersByProjectId(projectId);
     }
-    @DeleteMapping("/{projectId}/teamMembers/{userId}")
-    public ResponseEntity<String> removeTeamMemberFromProject(
-            @PathVariable int projectId,
-            @PathVariable int userId) {
-        try {
-            String result = projectService.removeTeamMemberFromProject(projectId, userId);
-            return ResponseEntity.ok(result);
-        } catch (Exception e) {
-            return ResponseEntity.status(404).body(e.getMessage());
-        }
+
+    @GetMapping("/projectManager")
+    public User getProjectManagerByTeamMember(@RequestParam String username) {
+        return projectService.getProjectManagerByTeamMemberUsername(username);
     }
 
+    @GetMapping("/user/{username}")
+    public List<Project> getProjectsByUsernameget(@PathVariable String username) {
+        return projectService.getProjectsByUsernameget(username);
+    }
 
+    @GetMapping("/project-managers/team-member/{username}")
+    public List<User> getProjectManagersByTeamMemberUsername(@PathVariable String username) {
+        return projectService.getAllProjectManagersByTeamMemberUsername(username);
+    }
+
+    @GetMapping("/{projectId}/manager")
+    public ResponseEntity<User> getProjectManagerByProjectId(@PathVariable int projectId) {
+        User projectManager = projectService.getProjectManagerByProjectId(projectId);
+        return ResponseEntity.ok(projectManager);
+    }
 }

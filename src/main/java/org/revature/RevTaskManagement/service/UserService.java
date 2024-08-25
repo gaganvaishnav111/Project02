@@ -4,6 +4,7 @@ import org.revature.RevTaskManagement.Enums.Role;
 import org.revature.RevTaskManagement.Enums.Status;
 import org.revature.RevTaskManagement.models.*;
 import org.revature.RevTaskManagement.repository.ProjectRepository;
+import org.revature.RevTaskManagement.repository.TaskRepository;
 import org.revature.RevTaskManagement.repository.UserRepository;
 
 import jakarta.mail.MessagingException;
@@ -25,25 +26,41 @@ public class UserService {
     @Autowired
     private ProjectRepository projectRepository;
 
+    @Autowired
+    private TaskRepository taskRepository;
 
     public User authenticateUser(String email, String password) {
         User user = userRepository.findByEmail(email);
-        if (user != null && user.getPassword().equals(password)) {
-            return user;
+        if (user != null) {
+            if (user.getPassword().equals(password)) {
+                if (user.getStatus() == Status.ACTIVE) {
+                    return user;
+                } else {
+                    throw new RuntimeException("User is not active.");
+                }
+            }
         }
         return null;
     }
 
     public User createUser(User user) throws MessagingException {
+        // Generate a random password
         String password = generateRandomPassword();
+
+        // Set the password for the user
         user.setPassword(password);
+
+        // Save the user to the database
         User createdUser = userRepository.save(user);
+
         sendWelcomeEmail(user.getEmail(), user.getUsername(), password);
+
         return createdUser;
     }
 
+
     private String generateRandomPassword() {
-        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()";
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@*";
         StringBuilder sb = new StringBuilder();
         Random random = new Random();
         for (int i = 0; i < 10; i++) {
@@ -63,14 +80,13 @@ public class UserService {
         return userRepository.findAll();
     }
 
-    public User updateUser(int userId, String newName, String newEmail, Status newStatus) throws MessagingException {
+    public User updateUser(int userId, String newName, String newEmail) throws MessagingException {
         Optional<User> userOptional = userRepository.findById(userId);
         if (userOptional.isPresent()) {
             User user = userOptional.get();
 
             boolean nameChanged = false;
             boolean emailChanged = false;
-            boolean statusChanged = false;
 
             if (newName != null && !newName.isEmpty() && !newName.equals(user.getUsername())) {
                 user.setUsername(newName);
@@ -82,14 +98,9 @@ public class UserService {
                 emailChanged = true;
             }
 
-            if (newStatus != null && !newStatus.equals(user.getStatus())) {
-                user.setStatus(newStatus);
-                statusChanged = true;
-            }
-
             User updatedUser = userRepository.save(user);
 
-            if (nameChanged || emailChanged || statusChanged) {
+            if (nameChanged || emailChanged) {
                 String subject = "Account Information Update Notification";
                 StringBuilder body = new StringBuilder("Hello " + user.getUsername() + ",\n\nYour account information has been successfully updated.");
 
@@ -98,9 +109,6 @@ public class UserService {
                 }
                 if (emailChanged) {
                     body.append("\n\nNew Email: ").append(user.getEmail());
-                }
-                if (statusChanged) {
-                    body.append("\n\nNew Status: ").append(user.getStatus());
                 }
 
                 emailService.sendEmail(user.getEmail(), subject, body.toString());
@@ -208,13 +216,71 @@ public class UserService {
         for (Project project : projects) {
             tasks.addAll(project.getTasks());
         }
+
         return tasks;
     }
-    // Add the getUserById method
-    public User getUserById(int userId) {
-        return userRepository.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+    @Transactional
+    public void reassignTasksAndDeleteUser(int oldUserId, int newUserId) {
+        // Fetch the user to delete
+        User userToDelete = userRepository.findById(oldUserId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Fetch the new user to whom tasks will be reassigned
+        User newUser = userRepository.findById(newUserId)
+                .orElseThrow(() -> new RuntimeException("New user not found"));
+
+        // Find all tasks assigned to the user to be deleted
+        List<Task> tasksToReassign = taskRepository.findByAssignedTo(userToDelete);
+
+        // Reassign each task to the new user
+        for (Task task : tasksToReassign) {
+            task.setAssignedTo(newUser);
+            taskRepository.save(task);
+        }
+
+        // Delete the old user
+        userRepository.delete(userToDelete);
     }
 
+    @Transactional
+    public void deleteUserById(int userId) {
+        // Check if the user exists before attempting to delete
+        if (userRepository.existsById(userId)) {
+            userRepository.deleteById(userId);
+        } else {
+            throw new RuntimeException("User not found with ID: " + userId);
+        }
+    }
 
+    public User deactivateUser(int userId) {
+        Optional<User> userOptional = userRepository.findById(userId);
+        if (userOptional.isPresent()) {
+            User user = userOptional.get();
+            user.setStatus(Status.INACTIVE); // Set status to INACTIVE
+            return userRepository.save(user); // Save the updated user
+        } else {
+            throw new RuntimeException("User not found");
+        }
+    }
+
+    public User activateUser(int userId) {
+        Optional<User> userOptional = userRepository.findById(userId);
+        if (userOptional.isPresent()) {
+            User user = userOptional.get();
+            user.setStatus(Status.ACTIVE);
+            return userRepository.save(user);
+        } else {
+            throw new RuntimeException("User not found");
+        }
+    }
+
+    public List<User> getInactiveUsers() {
+        return userRepository.findByStatus(Status.INACTIVE);
+    }
+
+    public Optional<User> getUserById(int id) {
+        return userRepository.findById(id);
+    }
 
 }

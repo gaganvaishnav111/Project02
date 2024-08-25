@@ -5,7 +5,7 @@ import org.revature.RevTaskManagement.Enums.Role;
 import org.revature.RevTaskManagement.Enums.Status;
 
 @Entity
-@Table(name = "user")
+@Table(name = "users")
 public class User {
 
     @Id

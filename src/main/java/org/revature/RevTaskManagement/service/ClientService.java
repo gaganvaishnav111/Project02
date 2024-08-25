@@ -21,11 +21,4 @@ public class ClientService {
         return clientRepository.findAll();
     }
 
-    public void removeClient(int clientId) {
-        if (clientRepository.existsById(clientId)) {
-            clientRepository.deleteById(clientId);
-        } else {
-            throw new RuntimeException("Client not found with id: " + clientId);
-        }
-    }
 }

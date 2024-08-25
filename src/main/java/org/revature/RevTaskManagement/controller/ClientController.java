@@ -7,7 +7,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-
 @RestController
 @RequestMapping("/api/clients")
 public class ClientController {
@@ -23,16 +22,6 @@ public class ClientController {
     @GetMapping("/all")
     public List<Client> getAllClients() {
         return clientService.getAllClients();
-    }
-
-    @DeleteMapping("/delete/{clientId}")
-    public ResponseEntity<String> removeClient(@PathVariable("clientId") int clientId) {
-        try {
-            clientService.removeClient(clientId);
-            return ResponseEntity.ok("Client removed successfully.");
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body("Error removing client: " + e.getMessage());
-        }
     }
 
 }
